@@ -1,0 +1,154 @@
+version: '3.9'
+
+networks:
+    laravel: 
+        name: laravel
+
+services:
+    nginx:
+        build: 
+            context: .
+            dockerfile: nginx.dockerfile
+        container_name: nginx_insert
+        depends_on:
+            - php
+            - artisan
+            - queue
+            - composer
+            - mysql
+            - phpmyadmin
+            - rabbitmq
+        ports:
+            - 8000:80
+            - 443:443
+        volumes:
+            - ./src:/var/www/html:delegated
+        networks: 
+            - laravel
+
+    php:
+        build:
+            context: .
+            dockerfile: php.dockerfile
+        container_name: php_insert
+        volumes:
+            - ./src:/var/www/html:delegated
+        networks: 
+            - laravel
+
+    mysql:
+        image: mariadb:10.5
+        container_name: mysql_insert
+        restart: always
+        volumes:
+            - ./mysql:/var/lib/mysql
+        ports:
+            - 4306:3306
+        environment:
+            MYSQL_DATABASE: laraveldb
+            MYSQL_USER: laravel
+            MYSQL_PASSWORD: secret
+            MYSQL_ROOT_PASSWORD: secret
+        networks:
+            - laravel
+
+    phpmyadmin:
+        image: phpmyadmin/phpmyadmin:latest
+        container_name: phpmyadmin_insert
+        restart: always
+        ports:
+        - 8080:80
+        environment:
+        - PMA_ARBITRARY=1
+        networks:
+            - laravel
+
+    artisan:
+        build: 
+            context: .
+            dockerfile: php.dockerfile
+        container_name: artisan_insert
+        volumes:
+            - ./src:/var/www/html:delegated
+        working_dir: /var/www/html            
+        entrypoint: ["php", "artisan"]
+        networks:
+            - laravel
+
+    queue:
+        build: 
+            context: .
+            dockerfile: php.dockerfile
+        container_name: queue_insert
+        volumes:
+            - ./src:/var/www/html
+        working_dir: /var/www/html      
+        entrypoint: ["php", "artisan", "queue:work"]
+        networks:
+            - laravel
+
+    scheduler:
+        build: 
+            context: .
+            dockerfile: php.dockerfile
+        container_name: scheduler_insert
+        volumes:
+            - ./src:/var/www/html
+        working_dir: /var/www/html      
+        entrypoint: ["php", "artisan", "schedule:work"]
+        networks:
+            - laravel
+
+    composer:
+        build: 
+            context: .
+            dockerfile: php.dockerfile
+        container_name: composer_insert
+        volumes:
+            - ./src:/var/www/html
+        working_dir: /var/www/html
+        entrypoint: ["composer"]
+        networks:
+            - laravel
+
+    npm:
+        image: node:14.5
+        container_name: npm_insert
+        volumes:
+            - ./src:/var/www/html
+        working_dir: /var/www/html
+        entrypoint: ["npm"]
+        networks:
+            - laravel
+
+    phpunit:
+        build: 
+            context: .
+            dockerfile: php.dockerfile
+        container_name: phpunit_insert
+        volumes:
+            - ./src:/var/www/html
+        working_dir: /var/www/html            
+        entrypoint: ["/var/www/html/vendor/bin/phpunit"]
+        networks:
+            - laravel
+
+
+    redis:
+        image: redis:6.2.5
+        container_name: redis_insert
+        ports:
+            - 6379:6379
+        networks:
+            - laravel
+
+    rabbitmq:
+        image: rabbitmq:3.9-management
+        container_name: rabbitmqserver
+        volumes:
+            - ./rabbitmq:/var/lib/rabbitmq/mnesia
+        ports:
+            - 5672:5672
+            - 15672:15672
+        networks:
+            - laravel
